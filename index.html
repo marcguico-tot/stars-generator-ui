@@ -350,46 +350,118 @@
     ).join('');
   }
 
-  async function callClaude(scenario, mode, recipient, submitter){
-    const systemPrompt = mode === 'constructive'
-      ? `You convert a raw description of a workplace scenario into a STAR/AR constructive-feedback writeup, per this company's format:
-ST = Situation/Task: the context. Write this from the submitter's own point of view — use "I" or "we" naturally where it fits, the way someone narrating their own experience would, not a detached third-person summary. 1-2 sentences.
-A = Action: what ${recipient || 'the recipient'} actually did (the action that needs improvement) — refer to them by name, 1-2 sentences.
-R = Result: what happened / why that action was NOT effective, 1-2 sentences.
-altA = Alternative Action: what could have been done differently, 1-2 sentences.
-altR = Alternative Result: what would likely have happened with that alternative action, 1-2 sentences.
-Keep the tone constructive, specific, and non-judgmental — describing behavior, not character. This is delicate feedback, so keep it measured rather than warm or celebratory.
-Respond with ONLY a JSON object with keys "st", "a", "r", "altA", "altR" — no markdown fences, no preamble, no commentary.`
-      : `You convert a raw description of a workplace scenario into a positive STAR recognition writeup, per this company's format. Match the natural, first-person voice real teammates use — for example: "This quarter was our first time using the new automation for excise quarterly reports. Haroon created the automation, making the reporting process more streamlined and efficient. The automation helped us complete the reports much faster. Kudos to Haroon for this great improvement!"
+function parseScenario(scenario, mode, recipient) {
+    const sentences = scenario
+    .split(/\n+|(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .filter((value, index, self) => self.indexOf(value) === index);
 
-ST = Situation/Task: the context, written from the submitter's own point of view — use "I" or "we" naturally, as if narrating something they personally experienced, not a detached third-person summary. 1-2 sentences.
-A = Action: what ${recipient || 'the recipient'} specifically did — refer to them by name, 1-2 sentences.
-R = Result: what was achieved and why it was effective, 1-2 sentences.
-kudos = a short, warm, first-person closing line addressed to ${recipient || 'the recipient'} by name (e.g. "Thanks for helping us get this over the line, ${recipient || 'name'}!" or "Kudos to ${recipient || 'name'} for this great improvement!"). One sentence.
+    const keywords = {
+        situation: [
+            "issue","problem","incident","customer","request","deadline",
+            "during","before","after","while","when","needed","needed to",
+            "task","challenge","ticket","reported","deployment","release",
+            "production","client","bug","outage","error","support"
+        ],
 
-Keep the tone warm, specific, and genuine — avoid generic praise.
-Respond with ONLY a JSON object with keys "st", "a", "r", "kudos" — no markdown fences, no preamble, no commentary.`;
+        action: [
+            "created","implemented","fixed","resolved","reviewed",
+            "investigated","worked","coordinated","helped",
+            "communicated","updated","built","improved","designed",
+            "tested","deployed","automated","handled","responded",
+            "identified","documented","trained","explained",
+            "assisted","collaborated","organized"
+        ],
 
-    const userMsg = `Recipient: ${recipient || '(unspecified)'}\nSubmitter: ${submitter || '(unspecified)'}\nScenario:\n${scenario}`;
+        result: [
+            "result","resulted","led to","allowing","allowed",
+            "helped","prevented","avoided","reduced","completed",
+            "successfully","improved","saved","restored","faster",
+            "efficient","resolved","closed","delivered","finished",
+            "customer was","customer remained","within",
+            "ahead of schedule","on time","without"
+        ]
+    };
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userMsg }]
-      })
-    });
-    if(!response.ok){
-      throw new Error(`Generation request failed (${response.status})`);
+    function score(sentence, list) {
+        const text = sentence.toLowerCase();
+
+        return list.reduce((total, word) => {
+            return total + (text.includes(word) ? 1 : 0);
+        }, 0);
     }
-    const data = await response.json();
-    const text = data.content.map(b => b.text || '').join('').trim();
-    const clean = text.replace(/^```json\s*|^```\s*|```$/g, '').trim();
-    return JSON.parse(clean);
-  }
+
+    const st = [];
+    const act = [];
+    const res = [];
+
+    sentences.forEach((sentence, index) => {
+
+        let sScore = score(sentence, keywords.situation);
+        let aScore = score(sentence, keywords.action);
+        let rScore = score(sentence, keywords.result);
+
+        // Beginning usually describes context
+        if(index === 0)
+            sScore += 2;
+
+        // Ending usually describes outcome
+        if(index === sentences.length-1)
+            rScore += 2;
+
+        const highest = Math.max(sScore,aScore,rScore);
+
+        if(highest === rScore)
+            res.push(sentence);
+        else if(highest === aScore)
+            act.push(sentence);
+        else
+            st.push(sentence);
+    });
+
+    // Safety fallbacks
+    if(st.length === 0 && sentences.length)
+        st.push(sentences[0]);
+
+    if(act.length === 0 && sentences.length > 1)
+        act.push(...sentences.slice(1,-1));
+
+    if(res.length === 0 && sentences.length > 1)
+        res.push(sentences[sentences.length-1]);
+
+    // Better kudos generation
+    let kudos = "";
+
+    if(recipient){
+        const compliments = [
+            `Kudos to ${recipient} for demonstrating ownership and teamwork!`,
+            `Great work, ${recipient}! Your effort made a real difference.`,
+            `Thanks ${recipient} for going above and beyond!`,
+            `${recipient}, thank you for making this a success!`,
+            `Amazing work, ${recipient}! Keep it up!`
+        ];
+
+        kudos = compliments[Math.floor(Math.random()*compliments.length)];
+    }
+
+    if(mode === "constructive"){
+        return {
+            st: st.join(" "),
+            a: act.join(" "),
+            r: res.join(" "),
+            altA: "",
+            altR: ""
+        };
+    }
+
+    return {
+        st: st.join(" "),
+        a: act.join(" "),
+        r: res.join(" "),
+        kudos
+    };
+}
 
   async function generate(){
     const scenario = scenarioEl.value.trim();
@@ -406,7 +478,11 @@ Respond with ONLY a JSON object with keys "st", "a", "r", "kudos" — no markdow
     generateBtn.textContent = 'Generating…';
 
     try{
-      const fields = await callClaude(scenario, state.mode, recipient, submitter);
+      const fields = parseScenario(
+    scenario,
+    state.mode,
+    recipient
+);
       const finalText = buildFinalText(
         fields, state.mode,
         recipient || '[recipient]', submitter || '[your name]'
