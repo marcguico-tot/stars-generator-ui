@@ -518,31 +518,31 @@ function parseScenario(scenario, mode, recipient) {
   const channelOverrideEl = document.getElementById('channelOverride');
   const saveTag = document.getElementById('saveTag');
 
-  async function loadSettings(){
-    try{
-      const result = await window.storage.get('mattermost-config', false);
-      if(result && result.value){
-        const cfg = JSON.parse(result.value);
-        webhookUrlEl.value = cfg.webhook || '';
-        channelOverrideEl.value = cfg.channel || '';
-      }
-    }catch(e){ /* no saved config yet */ }
-  }
-  loadSettings();
+  function loadSettings() {
+    const cfg = JSON.parse(
+        localStorage.getItem("mattermost-config") || "{}"
+    );
 
-  document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
-    try{
-      await window.storage.set('mattermost-config', JSON.stringify({
-        webhook: webhookUrlEl.value.trim(),
-        channel: channelOverrideEl.value.trim()
-      }), false);
-      saveTag.style.display = 'inline';
-      setTimeout(() => saveTag.style.display = 'none', 1800);
-    }catch(e){
-      saveTag.textContent = 'Could not save — try again';
-      saveTag.style.display = 'inline';
-    }
-  });
+    webhookUrlEl.value = cfg.webhook || "";
+    channelOverrideEl.value = cfg.channel || "";
+}
+
+loadSettings();
+
+document.getElementById("saveSettingsBtn").addEventListener("click", () => {
+
+    localStorage.setItem(
+        "mattermost-config",
+        JSON.stringify({
+            webhook: webhookUrlEl.value.trim(),
+            channel: channelOverrideEl.value.trim()
+        })
+    );
+
+    saveTag.style.display = "inline";
+    setTimeout(() => saveTag.style.display = "none", 1800);
+
+});
 
   // ---------- Send to Mattermost ----------
   document.getElementById('sendBtn').addEventListener('click', async () => {
