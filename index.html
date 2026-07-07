@@ -37,10 +37,24 @@
   }
   button.primary:hover{ background: var(--gold-soft); }
   button.primary:disabled{ opacity: 0.55; cursor: default; }
+  button.ghost{
+    background: transparent; color: var(--text); border: 1px solid var(--line); font-family: var(--sans);
+    font-size: 13.5px; padding: 10px 16px; border-radius: 9px; cursor: pointer; margin-bottom: 18px;
+  }
+  button.ghost:hover{ border-color: var(--gold-soft); color: var(--gold-soft); }
   .status{ margin-top: 16px; font-size: 13.5px; padding: 12px 14px; border-radius: 9px; display:none; }
   .status.ok{ display:block; background:#16281c; border:1px solid #3f7a52; color:#a6dcb4; }
   .status.err{ display:block; background:#2b1c22; border:1px solid #d17a8f; color:#e6a6b6; }
   .hint{ color: var(--muted); font-size: 13px; margin-top: 6px; }
+  details.advanced{
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px;
+  }
+  details.advanced summary{
+    cursor: pointer; font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.05em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  details.advanced summary::marker{ color: var(--gold); }
+  .settings-body{ margin-top: 16px; }
 </style>
 </head>
 <body>
@@ -51,40 +65,77 @@
 
   <div class="card">
     <label for="starText">STAR text</label>
-    <textarea id="starText" placeholder="Paste your generated STAR here..."></textarea>
+    <textarea id="starText" placeholder="Paste your generated STAR here, or use the button below..."></textarea>
 
-    <div class="row">
-      <div class="field">
-        <label for="webhookUrl">Webhook URL</label>
-        <input type="text" id="webhookUrl" placeholder="https://your-mattermost.../hooks/xxxxxxxx">
-      </div>
-      <div class="field">
-        <label for="channelOverride">Channel override (optional)</label>
-        <input type="text" id="channelOverride" placeholder="huzzah">
-      </div>
-    </div>
-
-    <button class="primary" id="sendBtn">Send to Huzzah →</button>
+    <button class="primary" id="pasteSendBtn">📋 Paste & Send to Huzzah →</button>
+    <button class="ghost" id="pasteBtn" type="button">Just paste, I'll review first</button>
     <div class="status" id="statusBox"></div>
-    <p class="hint">The webhook URL is remembered in this browser only — it's never sent anywhere except the URL you enter above.</p>
   </div>
+
+  <details class="advanced">
+    <summary>Advanced: sender settings</summary>
+    <div class="settings-body">
+      <p class="hint" style="margin-top:0;">
+        This is set in the page's code to a fixed webhook, so teammates never need to touch it.
+        Override here only for testing — it's remembered in this browser only and doesn't change the default for anyone else.
+      </p>
+      <div class="row">
+        <div class="field">
+          <label for="webhookUrl">Webhook URL</label>
+          <input type="text" id="webhookUrl" placeholder="https://your-mattermost.../hooks/xxxxxxxx">
+        </div>
+        <div class="field">
+          <label for="channelOverride">Channel override (optional)</label>
+          <input type="text" id="channelOverride" placeholder="huzzah">
+        </div>
+      </div>
+      <button class="ghost" id="resetDefaultBtn" type="button">Reset to default</button>
+    </div>
+  </details>
 </div>
 
 <script>
+  // ---- Set the permanent webhook here. Update this one line once the real
+  // Huzzah webhook (via Pipedream, or direct if it ever works) is finalized. ----
+  const DEFAULT_WEBHOOK_URL = 'https://eorqng4tp3370qs.m.pipedream.net';
+  const DEFAULT_CHANNEL_OVERRIDE = '';
+
   const webhookUrlEl = document.getElementById('webhookUrl');
   const channelOverrideEl = document.getElementById('channelOverride');
   const starTextEl = document.getElementById('starText');
   const statusBox = document.getElementById('statusBox');
-  const sendBtn = document.getElementById('sendBtn');
 
-  // Remember the webhook URL in this browser (plain localStorage — this page
-  // is meant to be hosted on its own, outside Claude's artifact sandbox).
+  // Remember an override in this browser only. If nothing's been overridden,
+  // fall back to the hardcoded default above — this is what teammates get
+  // with zero configuration.
   try{
-    webhookUrlEl.value = localStorage.getItem('huzzah-webhook-url') || '';
-    channelOverrideEl.value = localStorage.getItem('huzzah-channel-override') || '';
-  }catch(e){ /* storage unavailable, e.g. private browsing — just skip persistence */ }
+    webhookUrlEl.value = localStorage.getItem('huzzah-webhook-url') || DEFAULT_WEBHOOK_URL;
+    channelOverrideEl.value = localStorage.getItem('huzzah-channel-override') || DEFAULT_CHANNEL_OVERRIDE;
+  }catch(e){
+    webhookUrlEl.value = DEFAULT_WEBHOOK_URL;
+    channelOverrideEl.value = DEFAULT_CHANNEL_OVERRIDE;
+  }
 
-  sendBtn.addEventListener('click', async () => {
+  document.getElementById('resetDefaultBtn').addEventListener('click', () => {
+    webhookUrlEl.value = DEFAULT_WEBHOOK_URL;
+    channelOverrideEl.value = DEFAULT_CHANNEL_OVERRIDE;
+    try{
+      localStorage.removeItem('huzzah-webhook-url');
+      localStorage.removeItem('huzzah-channel-override');
+    }catch(e){ /* ignore */ }
+  });
+
+  document.getElementById('pasteBtn').addEventListener('click', async () => {
+    try{
+      const text = await navigator.clipboard.readText();
+      if(text) starTextEl.value = text;
+    }catch(e){
+      statusBox.className = 'status err';
+      statusBox.textContent = "Couldn't read clipboard automatically — paste manually with Ctrl/Cmd+V into the box above.";
+    }
+  });
+
+  async function sendStar(btn){
     statusBox.className = 'status';
     const text = starTextEl.value.trim();
     const webhook = webhookUrlEl.value.trim();
@@ -92,12 +143,12 @@
 
     if(!text){
       statusBox.className = 'status err';
-      statusBox.textContent = 'Paste a STAR first — nothing to send yet.';
+      statusBox.textContent = 'Nothing to send yet — paste a STAR first.';
       return;
     }
     if(!webhook){
       statusBox.className = 'status err';
-      statusBox.textContent = 'Add a webhook URL first.';
+      statusBox.textContent = 'Add a webhook URL first (see Advanced settings below).';
       return;
     }
 
@@ -106,8 +157,9 @@
       localStorage.setItem('huzzah-channel-override', channel);
     }catch(e){ /* ignore if storage unavailable */ }
 
-    sendBtn.disabled = true;
-    sendBtn.textContent = 'Sending…';
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
 
     try{
       const payload = { text };
@@ -123,11 +175,23 @@
       starTextEl.value = '';
     }catch(err){
       statusBox.className = 'status err';
-      statusBox.textContent = `Send failed: ${err.message}. If this is a CORS error (check browser console), this webhook doesn't allow direct browser calls — point the Webhook URL above at a relay (e.g. your Pipedream URL) instead.`;
+      statusBox.textContent = `Send failed: ${err.message}. If this is a CORS error (check browser console), this webhook doesn't allow direct browser calls — point the Webhook URL below at a relay (e.g. a Pipedream URL) instead.`;
     }finally{
-      sendBtn.disabled = false;
-      sendBtn.textContent = 'Send to Huzzah →';
+      btn.disabled = false;
+      btn.textContent = originalLabel;
     }
+  }
+
+  document.getElementById('pasteSendBtn').addEventListener('click', async (e) => {
+    try{
+      const text = await navigator.clipboard.readText();
+      if(text) starTextEl.value = text;
+    }catch(err){
+      statusBox.className = 'status err';
+      statusBox.textContent = "Couldn't read clipboard automatically — paste manually with Ctrl/Cmd+V, then click this button again to send.";
+      return;
+    }
+    await sendStar(e.currentTarget);
   });
 </script>
 </body>
