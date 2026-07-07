@@ -183,6 +183,7 @@
   }
 
   document.getElementById('pasteSendBtn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
     try{
       const text = await navigator.clipboard.readText();
       if(text) starTextEl.value = text;
@@ -191,7 +192,7 @@
       statusBox.textContent = "Couldn't read clipboard automatically — paste manually with Ctrl/Cmd+V, then click this button again to send.";
       return;
     }
-    await sendStar(e.currentTarget);
+    await sendStar(btn);
   });
 </script>
 </body>
