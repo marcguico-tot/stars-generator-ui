@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STARs Generator — Huzzah</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg: #12142a;
+    --bg-soft: #171a35;
+    --panel: #1c2044;
+    --panel-2: #232854;
+    --line: #323a6e;
+    --gold: #e8b04b;
+    --gold-soft: #f3cd82;
+    --rose: #d17a8f;
+    --rose-soft: #e6a6b6;
+    --text: #f1eee6;
+    --muted: #9498b8;
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'Fraunces', serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+    --radius: 14px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(ellipse at 20% -10%, #23285a 0%, var(--bg) 45%) fixed;
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.5;
+    padding: 0 20px 80px;
+  }
+  a{color: var(--gold-soft);}
+
+  .wrap{max-width: 760px; margin: 0 auto;}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    position: relative;
+    padding: 72px 8px 40px;
+    text-align: center;
+  }
+  .constellation{
+    position:absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    width: 320px; height: 90px; opacity: 0.9;
+  }
+  .constellation circle{ fill: var(--muted); transition: fill 0.4s ease; }
+  .constellation circle.lit{ fill: var(--gold); }
+  .constellation line{
+    stroke: var(--line); stroke-width: 1.5;
+    stroke-dasharray: 140; stroke-dashoffset: 140;
+    transition: stroke-dashoffset 0.9s ease, stroke 0.4s ease;
+  }
+  .constellation line.drawn{ stroke-dashoffset: 0; stroke: var(--gold); }
+  .constellation text{
+    font-family: var(--mono); font-size: 11px; fill: var(--muted);
+    letter-spacing: 0.08em; transition: fill 0.4s ease;
+  }
+  .constellation text.lit{ fill: var(--gold-soft); }
+
+  .eyebrow{
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em;
+    color: var(--gold-soft); text-transform: uppercase; margin: 0 0 14px;
+  }
+  h1{
+    font-family: var(--serif); font-weight: 500; font-size: clamp(32px, 6vw, 46px);
+    margin: 0 0 14px; letter-spacing: -0.01em;
+  }
+  h1 em{ font-style: italic; color: var(--gold-soft); font-weight: 500;}
+  .sub{ color: var(--muted); font-size: 16px; max-width: 480px; margin: 0 auto; }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 22px;
+  }
+  .card h2{
+    font-family: var(--serif); font-weight: 500; font-size: 20px; margin: 0 0 4px;
+  }
+  .card .hint{ color: var(--muted); font-size: 13.5px; margin: 0 0 22px; }
+
+  .row{ display:flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .field{ flex: 1 1 200px; }
+  label{
+    display:block; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
+  }
+  input[type=text], textarea{
+    width: 100%; background: var(--bg-soft); border: 1px solid var(--line);
+    color: var(--text); border-radius: 9px; padding: 11px 13px; font-family: var(--sans);
+    font-size: 14.5px; resize: vertical;
+  }
+  input[type=text]:focus, textarea:focus{
+    outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold);
+  }
+  textarea{ min-height: 120px; line-height: 1.55; }
+
+  .mode-toggle{ display:flex; gap: 10px; margin-bottom: 20px; }
+  .mode-btn{
+    flex:1; text-align:left; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg-soft); cursor: pointer;
+    color: var(--text); font-family: var(--sans); font-size: 13.5px;
+  }
+  .mode-btn strong{ display:block; font-size: 14px; margin-bottom: 2px; }
+  .mode-btn[aria-pressed="true"]{ border-color: var(--gold); background: #2a2410; }
+  .mode-btn.constructive[aria-pressed="true"]{ border-color: var(--rose); background: #2a1620; }
+  .mode-btn:focus-visible{ outline: 2px solid var(--gold-soft); outline-offset: 2px; }
+
+  button.primary{
+    background: var(--gold); color: #221a05; border: none; font-weight: 600;
+    font-family: var(--sans); font-size: 14.5px; padding: 13px 22px; border-radius: 10px;
+    cursor: pointer; display:inline-flex; align-items:center; gap:8px;
+  }
+  button.primary:hover{ background: var(--gold-soft); }
+  button.primary:disabled{ opacity: 0.55; cursor: default; }
+  button.ghost{
+    background: transparent; color: var(--text); border: 1px solid var(--line);
+    font-family: var(--sans); font-size: 13.5px; padding: 11px 16px; border-radius: 9px;
+    cursor: pointer;
+  }
+  button.ghost:hover{ border-color: var(--gold-soft); color: var(--gold-soft); }
+  button:focus-visible{ outline: 2px solid var(--gold-soft); outline-offset: 2px; }
+
+  .error-box{
+    background: #2b1c22; border: 1px solid var(--rose); color: var(--rose-soft);
+    border-radius: 9px; padding: 12px 14px; font-size: 13.5px; margin-top: 14px;
+  }
+
+  /* ---------- Output ---------- */
+  #outputCard{ display:none; }
+  .star-strip{ display:flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .star-tag{
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    padding: 5px 10px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted);
+  }
+  .star-tag.on{ border-color: var(--gold); color: var(--gold-soft); }
+  .star-tag.on.alt{ border-color: var(--rose); color: var(--rose-soft); }
+
+  #starOutput{
+    width:100%; min-height: 220px; font-family: var(--mono); font-size: 13.5px;
+    line-height: 1.7; background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px; color: var(--text); white-space: pre-wrap;
+  }
+  .output-actions{ display:flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .copied-tag{ font-size: 13px; color: var(--gold-soft); margin-left: 4px; }
+
+  /* ---------- Settings ---------- */
+  details.settings{
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 22px; margin-bottom: 22px;
+  }
+  details.settings summary{
+    cursor: pointer; font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.05em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  details.settings summary::marker{ color: var(--gold); }
+  .settings-body{ margin-top: 16px; }
+  .save-tag{ font-size: 12.5px; color: var(--gold-soft); margin-left: 10px; }
+
+  footer{
+    text-align:center; color: var(--muted); font-size: 12.5px; margin-top: 40px;
+    padding: 0 20px; line-height: 1.7;
+  }
+  footer strong{ color: var(--text); }
+
+  @media (prefers-reduced-motion: reduce){
+    .constellation line, .constellation circle, .constellation text{ transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <svg class="constellation" viewBox="0 0 320 90" aria-hidden="true">
+      <line id="lineSTA" x1="30" y1="55" x2="120" y2="30"></line>
+      <line id="lineAR"  x1="120" y1="30" x2="210" y2="55"></line>
+      <line id="lineRA2" x1="210" y1="55" x2="260" y2="25"></line>
+      <line id="lineA2R2" x1="260" y1="25" x2="300" y2="50"></line>
+      <circle id="dotST" cx="30" cy="55" r="4"></circle>
+      <circle id="dotA" cx="120" cy="30" r="4"></circle>
+      <circle id="dotR" cx="210" cy="55" r="4"></circle>
+      <circle id="dotA2" cx="260" cy="25" r="4"></circle>
+      <circle id="dotR2" cx="300" cy="50" r="4"></circle>
+      <text x="24" y="72">ST</text>
+      <text x="114" y="18">A</text>
+      <text x="204" y="72">R</text>
+      <text x="252" y="13">A</text>
+      <text x="288" y="68">R</text>
+    </svg>
+    <p class="eyebrow">Huzzah · Team Recognition</p>
+    <h1>Turn today's good call<br>into someone's <em>STAR</em>.</h1>
+    <p class="sub">Describe what happened. This turns it into a properly formatted STAR — ready to post in Huzzah.</p>
+  </div>
+
+  <div class="card">
+    <h2>Who and what</h2>
+    <p class="hint">Fill in the names, describe the scenario in your own words, and let the generator structure it.</p>
+
+    <div class="row">
+      <div class="field">
+        <label for="recipient">Submitted for</label>
+        <input type="text" id="recipient" placeholder="e.g. Bob">
+      </div>
+      <div class="field">
+        <label for="submitter">By</label>
+        <input type="text" id="submitter" placeholder="e.g. Joan">
+      </div>
+    </div>
+
+    <div class="mode-toggle" role="group" aria-label="STAR type">
+      <button type="button" class="mode-btn positive" id="modePositive" aria-pressed="true">
+        <strong>★ Positive STAR</strong>
+        Celebrate something worth repeating.
+      </button>
+      <button type="button" class="mode-btn constructive" id="modeConstructive" aria-pressed="false">
+        <strong>STAR/AR · Feedback</strong>
+        Constructive — adds an alternative action &amp; result.
+      </button>
+    </div>
+
+    <div class="field" style="margin-bottom: 20px;">
+      <label for="scenario">Describe the whole scenario</label>
+      <textarea id="scenario" placeholder="What was going on, what did they do, and what happened as a result? Write it however comes naturally — the generator will structure it."></textarea>
+    </div>
+
+    <button class="primary" id="generateBtn">✦ Generate STAR</button>
+    <div id="genError"></div>
+  </div>
+
+  <div class="card" id="outputCard">
+    <h2>Your STAR</h2>
+    <p class="hint">Review and tweak the wording before sharing — it's fully editable.</p>
+    <div class="star-strip" id="starStrip"></div>
+    <textarea id="starOutput"></textarea>
+    <div class="output-actions">
+      <button class="ghost" id="regenerateBtn">↻ Regenerate</button>
+      <button class="ghost" id="copyBtn">⧉ Copy</button>
+      <button class="primary" id="sendBtn">Send to Huzzah →</button>
+      <span class="copied-tag" id="copiedTag" style="display:none;">Copied</span>
+    </div>
+    <div id="sendError"></div>
+  </div>
+
+  <details class="settings">
+    <summary>Mattermost connection</summary>
+    <div class="settings-body">
+      <div class="row">
+        <div class="field">
+          <label for="webhookUrl">Huzzah incoming webhook URL</label>
+          <input type="text" id="webhookUrl" placeholder="https://your-mattermost.example.com/hooks/xxxxxxxx">
+        </div>
+        <div class="field">
+          <label for="channelOverride">Channel override (optional)</label>
+          <input type="text" id="channelOverride" placeholder="huzzah">
+        </div>
+      </div>
+      <button class="ghost" id="saveSettingsBtn">Save connection</button>
+      <span class="save-tag" id="saveTag" style="display:none;">Saved on this device</span>
+      <p class="hint" style="margin-top:14px; margin-bottom:0;">
+        This is stored only in your browser, and only used to post the message you approve above.
+        Note: whether the direct send works depends on your Mattermost server allowing browser requests to this webhook.
+        If it's blocked, use Copy and paste it into Huzzah yourself — no setup needed for that path.
+      </p>
+    </div>
+  </details>
+
+  <footer>
+    Recognized STARs are eligible for the monthly and quarterly STAR awards, and a small <strong>$25</strong> token of thanks.
+    Not comfortable posting publicly? Send your STAR to your manager instead.
+  </footer>
+</div>
+
+<script>
+  const state = { mode: 'positive' };
+
+  const scenarioEl = document.getElementById('scenario');
+  const recipientEl = document.getElementById('recipient');
+  const submitterEl = document.getElementById('submitter');
+  const generateBtn = document.getElementById('generateBtn');
+  const genErrorEl = document.getElementById('genError');
+  const outputCard = document.getElementById('outputCard');
+  const starOutput = document.getElementById('starOutput');
+  const starStrip = document.getElementById('starStrip');
+  const sendErrorEl = document.getElementById('sendError');
+  const copiedTag = document.getElementById('copiedTag');
+
+  const modePositiveBtn = document.getElementById('modePositive');
+  const modeConstructiveBtn = document.getElementById('modeConstructive');
+
+  function setMode(mode){
+    state.mode = mode;
+    modePositiveBtn.setAttribute('aria-pressed', mode === 'positive');
+    modeConstructiveBtn.setAttribute('aria-pressed', mode === 'constructive');
+  }
+  modePositiveBtn.addEventListener('click', () => setMode('positive'));
+  modeConstructiveBtn.addEventListener('click', () => setMode('constructive'));
+
+  function lightConstellation(mode){
+    const ids = mode === 'constructive'
+      ? ['dotST','dotA','dotR','dotA2','dotR2']
+      : ['dotST','dotA','dotR'];
+    const lineIds = mode === 'constructive'
+      ? ['lineSTA','lineAR','lineRA2','lineA2R2']
+      : ['lineSTA','lineAR'];
+    ['dotST','dotA','dotR','dotA2','dotR2'].forEach(id => document.getElementById(id).classList.remove('lit'));
+    ['lineSTA','lineAR','lineRA2','lineA2R2'].forEach(id => document.getElementById(id).classList.remove('drawn'));
+    document.querySelectorAll('.constellation text').forEach(t => t.classList.remove('lit'));
+    ids.forEach((id, i) => {
+      setTimeout(() => document.getElementById(id).classList.add('lit'), i * 150);
+    });
+    lineIds.forEach((id, i) => {
+      setTimeout(() => document.getElementById(id).classList.add('drawn'), i * 150 + 80);
+    });
+    const texts = document.querySelectorAll('.constellation text');
+    const textIdxs = mode === 'constructive' ? [0,1,2,3,4] : [0,1,2];
+    textIdxs.forEach((idx, i) => setTimeout(() => texts[idx].classList.add('lit'), i * 150));
+  }
+
+  function buildFinalText(fields, mode, recipient, submitter){
+    const header = mode === 'constructive'
+      ? `STAR/AR - submitted for ${recipient}, by ${submitter}.`
+      : `STAR - submitted for ${recipient}, by ${submitter}.`;
+    let lines = [header,
+      `ST - ${fields.st}`,
+      `A - ${fields.a}`,
+      `R - ${fields.r}`];
+    if(mode === 'constructive'){
+      lines.push(`A - ${fields.altA} (alternative action)`);
+      lines.push(`R - ${fields.altR} (alternative result)`);
+    } else if(fields.kudos){
+      lines.push(fields.kudos);
+    }
+    return lines.join('\n');
+  }
+
+  function renderStrip(mode){
+    const tags = mode === 'constructive'
+      ? [['ST',false],['A',false],['R',false],['A',true],['R',true]]
+      : [['ST',false],['A',false],['R',false]];
+    starStrip.innerHTML = tags.map(([label, alt]) =>
+      `<span class="star-tag on${alt ? ' alt' : ''}">${label}</span>`
+    ).join('');
+  }
+
+  async function callClaude(scenario, mode, recipient, submitter){
+    const systemPrompt = mode === 'constructive'
+      ? `You convert a raw description of a workplace scenario into a STAR/AR constructive-feedback writeup, per this company's format:
+ST = Situation/Task: the context. Write this from the submitter's own point of view — use "I" or "we" naturally where it fits, the way someone narrating their own experience would, not a detached third-person summary. 1-2 sentences.
+A = Action: what ${recipient || 'the recipient'} actually did (the action that needs improvement) — refer to them by name, 1-2 sentences.
+R = Result: what happened / why that action was NOT effective, 1-2 sentences.
+altA = Alternative Action: what could have been done differently, 1-2 sentences.
+altR = Alternative Result: what would likely have happened with that alternative action, 1-2 sentences.
+Keep the tone constructive, specific, and non-judgmental — describing behavior, not character. This is delicate feedback, so keep it measured rather than warm or celebratory.
+Respond with ONLY a JSON object with keys "st", "a", "r", "altA", "altR" — no markdown fences, no preamble, no commentary.`
+      : `You convert a raw description of a workplace scenario into a positive STAR recognition writeup, per this company's format. Match the natural, first-person voice real teammates use — for example: "This quarter was our first time using the new automation for excise quarterly reports. Haroon created the automation, making the reporting process more streamlined and efficient. The automation helped us complete the reports much faster. Kudos to Haroon for this great improvement!"
+
+ST = Situation/Task: the context, written from the submitter's own point of view — use "I" or "we" naturally, as if narrating something they personally experienced, not a detached third-person summary. 1-2 sentences.
+A = Action: what ${recipient || 'the recipient'} specifically did — refer to them by name, 1-2 sentences.
+R = Result: what was achieved and why it was effective, 1-2 sentences.
+kudos = a short, warm, first-person closing line addressed to ${recipient || 'the recipient'} by name (e.g. "Thanks for helping us get this over the line, ${recipient || 'name'}!" or "Kudos to ${recipient || 'name'} for this great improvement!"). One sentence.
+
+Keep the tone warm, specific, and genuine — avoid generic praise.
+Respond with ONLY a JSON object with keys "st", "a", "r", "kudos" — no markdown fences, no preamble, no commentary.`;
+
+    const userMsg = `Recipient: ${recipient || '(unspecified)'}\nSubmitter: ${submitter || '(unspecified)'}\nScenario:\n${scenario}`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMsg }]
+      })
+    });
+    if(!response.ok){
+      throw new Error(`Generation request failed (${response.status})`);
+    }
+    const data = await response.json();
+    const text = data.content.map(b => b.text || '').join('').trim();
+    const clean = text.replace(/^```json\s*|^```\s*|```$/g, '').trim();
+    return JSON.parse(clean);
+  }
+
+  async function generate(){
+    const scenario = scenarioEl.value.trim();
+    const recipient = recipientEl.value.trim();
+    const submitter = submitterEl.value.trim();
+    genErrorEl.innerHTML = '';
+
+    if(!scenario){
+      genErrorEl.innerHTML = '<div class="error-box">Describe the scenario first — that\'s what the generator works from.</div>';
+      return;
+    }
+
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Generating…';
+
+    try{
+      const fields = await callClaude(scenario, state.mode, recipient, submitter);
+      const finalText = buildFinalText(
+        fields, state.mode,
+        recipient || '[recipient]', submitter || '[your name]'
+      );
+      starOutput.value = finalText;
+      renderStrip(state.mode);
+      outputCard.style.display = 'block';
+      lightConstellation(state.mode);
+      outputCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }catch(err){
+      genErrorEl.innerHTML = `<div class="error-box">Couldn't generate that STAR: ${err.message}. Try again in a moment.</div>`;
+    }finally{
+      generateBtn.disabled = false;
+      generateBtn.textContent = '✦ Generate STAR';
+    }
+  }
+
+  generateBtn.addEventListener('click', generate);
+  document.getElementById('regenerateBtn').addEventListener('click', generate);
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(starOutput.value);
+      copiedTag.style.display = 'inline';
+      setTimeout(() => copiedTag.style.display = 'none', 1800);
+    }catch(e){
+      genErrorEl.innerHTML = '<div class="error-box">Clipboard copy blocked — select the text and copy manually.</div>';
+    }
+  });
+
+  // ---------- Settings persistence ----------
+  const webhookUrlEl = document.getElementById('webhookUrl');
+  const channelOverrideEl = document.getElementById('channelOverride');
+  const saveTag = document.getElementById('saveTag');
+
+  async function loadSettings(){
+    try{
+      const result = await window.storage.get('mattermost-config', false);
+      if(result && result.value){
+        const cfg = JSON.parse(result.value);
+        webhookUrlEl.value = cfg.webhook || '';
+        channelOverrideEl.value = cfg.channel || '';
+      }
+    }catch(e){ /* no saved config yet */ }
+  }
+  loadSettings();
+
+  document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+    try{
+      await window.storage.set('mattermost-config', JSON.stringify({
+        webhook: webhookUrlEl.value.trim(),
+        channel: channelOverrideEl.value.trim()
+      }), false);
+      saveTag.style.display = 'inline';
+      setTimeout(() => saveTag.style.display = 'none', 1800);
+    }catch(e){
+      saveTag.textContent = 'Could not save — try again';
+      saveTag.style.display = 'inline';
+    }
+  });
+
+  // ---------- Send to Mattermost ----------
+  document.getElementById('sendBtn').addEventListener('click', async () => {
+    sendErrorEl.innerHTML = '';
+    const webhook = webhookUrlEl.value.trim();
+    const channel = channelOverrideEl.value.trim();
+
+    if(!webhook){
+      sendErrorEl.innerHTML = '<div class="error-box">Add your Huzzah webhook URL under "Mattermost connection" below, then save it, before sending.</div>';
+      return;
+    }
+
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+
+    try{
+      const payload = { text: starOutput.value };
+      if(channel) payload.channel = channel;
+      const resp = await fetch(webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if(!resp.ok) throw new Error(`Mattermost returned ${resp.status}`);
+      sendErrorEl.innerHTML = '<div class="error-box" style="border-color: var(--gold); color: var(--gold-soft);">Sent to Huzzah 🎉</div>';
+    }catch(err){
+      sendErrorEl.innerHTML = `<div class="error-box">Direct send didn't go through (${err.message}). This usually means the Mattermost server is blocking browser requests to the webhook. Use Copy above and paste it into Huzzah instead.</div>`;
+    }finally{
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send to Huzzah →';
+    }
+  });
+</script>
+</body>
+</html>
